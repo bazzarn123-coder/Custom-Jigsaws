@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Fullscreen Jigsaw Master</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V5H6c-1.1 0-2 .9-2 2v4H2.5C1.67 11 1 11.67 1 12.5s.67 1.5 1.5 1.5H4v4c0 1.1.9 2 2 2h4v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V20h4c1.1 0 2-.9 2-2v-4h1.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z'/></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none;
+            background-color: #0f172a;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100dvh;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        canvas {
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+        /* Custom scrollbar for scrollable presets */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.6);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white w-screen flex flex-col overflow-hidden">
+
+    <!-- Main Splash Screen using jigsaws.jpg -->
+    <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col justify-end items-center bg-slate-950 pb-12 sm:pb-16 overflow-hidden">
+        <img src="jigsaws.jpg" alt="Custom Jigsaws" class="absolute inset-0 w-full h-full object-cover select-none pointer-events-none">
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent pointer-events-none"></div>
+        
+        <div class="relative z-10 w-full max-w-xs px-6 flex flex-col items-center gap-4">
+            <button id="start-game-btn" class="w-full bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-bold py-4 px-8 rounded-2xl shadow-2xl border border-white/30 text-lg tracking-wider transition transform hover:scale-105 active:scale-95 flex items-center justify-center space-x-3 cursor-pointer">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.262a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>START PUZZLE</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Header Bar (Out of play area, contains Preview & Options buttons) -->
+    <header class="w-full px-4 py-2.5 flex items-center justify-between bg-slate-900/90 backdrop-blur-md border-b border-white/10 z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+            <button id="preview-btn" class="bg-indigo-600/90 hover:bg-indigo-600 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow border border-white/20 cursor-pointer">
+                <svg class="w-4 h-4 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <span>Hold to Preview</span>
+            </button>
+            <div class="hidden sm:flex items-center space-x-3 text-xs font-mono text-indigo-200 bg-black/30 px-3 py-1.5 rounded-xl border border-white/5">
+                <span id="timer">00:00</span>
+                <span>•</span>
+                <span id="moves">0 moves</span>
+            </div>
+        </div>
+
+        <button id="options-btn" class="bg-slate-800/90 hover:bg-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 transition border border-white/10 cursor-pointer">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            <span>Options</span>
+        </button>
+    </header>
+
+    <!-- Main Game Canvas Container -->
+    <main class="w-full flex-1 relative flex items-center justify-center overflow-hidden">
+        <canvas id="gameCanvas" class="w-full h-full object-contain"></canvas>
+    </main>
+
+    <!-- Options Modal -->
+    <div id="options-modal" class="fixed inset-0 bg-slate-950/90 z-40 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-white/20 rounded-3xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4 relative max-h-[90vh] overflow-y-auto">
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-white mb-1">Game Options</h2>
+                <p class="text-xs text-indigo-300">Customize puzzle size & background</p>
+            </div>
+            
+            <div class="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5 text-sm font-mono text-white sm:hidden">
+                <div class="flex items-center space-x-2">
+                    <span id="timer-modal">00:00</span>
+                </div>
+                <div class="w-px h-4 bg-white/20"></div>
+                <div class="flex items-center space-x-2">
+                    <span id="moves-modal">0 moves</span>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center bg-black/30 p-3 rounded-xl border border-white/5">
+                <span class="text-indigo-200 text-sm font-medium">Grid Size:</span>
+                <div class="flex space-x-2">
+                    <button onclick="changeGridSize(5, 7)" id="btn-5x7" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-md">5 x 7</button>
+                    <button onclick="changeGridSize(7, 10)" id="btn-7x10" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-md">7 x 10</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-2.5">
+                <button id="restart-btn" class="bg-purple-600/80 hover:bg-purple-600 text-white py-2.5 rounded-xl text-sm font-medium transition shadow-md border border-purple-500/30">Shuffle & Reset</button>
+                
+                <label class="bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-90 text-white py-2.5 rounded-xl text-sm font-semibold transition shadow-md cursor-pointer text-center flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Upload Background</span>
+                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+                </label>
+            </div>
+
+            <!-- Scrollable Portrait Presets Picker (12 Items including cat and previous presets) -->
+            <div class="bg-black/20 p-2.5 rounded-xl border border-white/5">
+                <span class="text-xs text-indigo-200 font-medium mb-2 block text-center">Portrait Presets (Scrollable):</span>
+                <div class="flex items-center space-x-3 overflow-x-auto custom-scrollbar py-2 px-1">
+                    <button onclick="switchDefaultImage(0)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Cat Preset"></button>
+                    <button onclick="switchDefaultImage(1)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 2"></button>
+                    <button onclick="switchDefaultImage(2)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 3"></button>
+                    <button onclick="switchDefaultImage(3)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 4"></button>
+                    <button onclick="switchDefaultImage(4)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 5"></button>
+                    <button onclick="switchDefaultImage(5)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 6"></button>
+                    <button onclick="switchDefaultImage(6)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1522383225653-ed111181a951?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 7"></button>
+                    <button onclick="switchDefaultImage(7)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 8"></button>
+                    <button onclick="switchDefaultImage(8)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 9"></button>
+                    <button onclick="switchDefaultImage(9)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 10"></button>
+                    <button onclick="switchDefaultImage(10)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1507783590059-0524458f3316?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 11"></button>
+                    <button onclick="switchDefaultImage(11)" class="w-12 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 hover:scale-105 transition shadow"><img src="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=300&h=400&q=80" class="w-full h-full object-cover" alt="Preset 12"></button>
+                </div>
+            </div>
+
+            <button id="close-options-btn" class="w-full bg-white/10 hover:bg-white/20 text-white py-2.5 rounded-xl font-semibold transition border border-white/10">Resume Game</button>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4 hidden pointer-events-none">
+        <div class="bg-slate-900 border border-white/20 rounded-2xl max-w-lg w-full p-5 relative shadow-2xl flex flex-col items-center">
+            <h3 class="text-lg font-bold mb-3 text-white">Original Image Preview</h3>
+            <div class="rounded-xl overflow-hidden border border-white/25 max-h-[60vh] flex items-center justify-center mb-2">
+                <img id="preview-img" src="" alt="Preview" class="max-h-[55vh] object-contain rounded-lg">
+            </div>
+            <p class="text-xs text-indigo-300 mt-2">Release button to close</p>
+        </div>
+    </div>
+
+    <script>
+        // Puzzle Settings
+        let COLS = 5;
+        let ROWS = 7;
+        let TOTAL_PIECES = COLS * ROWS;
+
+        const LOGICAL_WIDTH = 900;
+        const LOGICAL_HEIGHT = 1500;
+
+        let pieceW = 145;
+        let pieceH = 145;
+        let boardW = pieceW * COLS;
+        let boardH = pieceH * ROWS;
+
+        const defaultImages = [
+            "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800&h=1200&q=80", // Cat preset
+            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1522383225653-ed111181a951?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1507783590059-0524458f3316?auto=format&fit=crop&w=800&h=1200&q=80",
+            "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=800&h=1200&q=80"
+        ];
+
+        let currentImageIndex = 0;
+        let currentImageSrc = defaultImages[0];
+        let img = new Image();
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = LOGICAL_WIDTH;
+        canvas.height = LOGICAL_HEIGHT;
+
+        let boardX = (LOGICAL_WIDTH - boardW) / 2;
+        let boardY = 20;
+        let trayAreaY = boardY + boardH + 15;
+
+        let pieces = [];
+        let hEdges = [];
+        let vEdges = [];
+
+        let startTime = null;
+        let timerInterval = null;
+        let secondsElapsed = 0;
+        let moveCount = 0;
+        let gameStarted = false;
+        let completedCount = 0;
+        let isCompleted = false;
+
+        let activePiece = null;
+        let grabOffsetX = 0;
+        let grabOffsetY = 0;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSnapSound() {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            } catch(e) {}
+        }
+
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function initEdges() {
+            hEdges = Array(ROWS - 1).fill(0).map(() => Array(COLS).fill(0).map(() => Math.random() < 0.5 ? 1 : -1));
+            vEdges = Array(ROWS).fill(0).map(() => Array(COLS - 1).fill(0).map(() => Math.random() < 0.5 ? 1 : -1));
+        }
+
+        function drawJigsawEdge(context, x1, y1, x2, y2, type) {
+            if (type === 0) {
+                context.lineTo(x2, y2);
+                return;
+            }
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const len = Math.hypot(dx, dy);
+            const ux = dx / len;
+            const uy = dy / len;
+            const vx = -uy * type;
+            const vy = ux * type;
+
+            const p = (pct, perp) => ({
+                x: x1 + dx * pct + vx * len * perp,
+                y: y1 + dy * pct + vy * len * perp
+            });
+
+            context.lineTo(p(0.35, 0).x, p(0.35, 0).y);
+            context.bezierCurveTo(p(0.33, 0.04).x, p(0.33, 0.04).y, p(0.30, 0.12).x, p(0.30, 0.12).y, p(0.38, 0.22).x, p(0.38, 0.22).y);
+            context.bezierCurveTo(p(0.42, 0.28).x, p(0.42, 0.28).y, p(0.58, 0.28).x, p(0.58, 0.28).y, p(0.62, 0.22).x, p(0.62, 0.22).y);
+            context.bezierCurveTo(p(0.70, 0.12).x, p(0.70, 0.12).y, p(0.67, 0.04).x, p(0.67, 0.04).y, p(0.65, 0).x, p(0.65, 0).y);
+            context.lineTo(x2, y2);
+        }
+
+        function createPieceOffscreenCanvas(r, c) {
+            const padding = 50; 
+            const cw = pieceW + padding * 2;
+            const ch = pieceH + padding * 2;
+            const canvasOS = document.createElement('canvas');
+            canvasOS.width = cw;
+            canvasOS.height = ch;
+            const oCtx = canvasOS.getContext('2d');
+
+            oCtx.save();
+            oCtx.translate(padding, padding);
+
+            let topEdge = r > 0 ? hEdges[r-1][c] : 0;
+            let rightEdge = c < COLS - 1 ? vEdges[r][c] : 0;
+            let bottomEdge = r < ROWS - 1 ? -hEdges[r][c] : 0;
+            let leftEdge = c > 0 ? -vEdges[r][c-1] : 0;
+
+            oCtx.beginPath();
+            oCtx.moveTo(0, 0);
+            drawJigsawEdge(oCtx, 0, 0, pieceW, 0, topEdge);
+            drawJigsawEdge(oCtx, pieceW, 0, pieceW, pieceH, rightEdge);
+            drawJigsawEdge(oCtx, pieceW, pieceH, 0, pieceH, bottomEdge);
+            drawJigsawEdge(oCtx, 0, pieceH, 0, 0, leftEdge);
+            oCtx.closePath();
+            oCtx.clip();
+
+            oCtx.drawImage(img, -c * pieceW, -r * pieceH, boardW, boardH);
+            oCtx.restore();
+
+            oCtx.save();
+            oCtx.translate(padding, padding);
+            oCtx.beginPath();
+            oCtx.moveTo(0, 0);
+            drawJigsawEdge(oCtx, 0, 0, pieceW, 0, topEdge);
+            drawJigsawEdge(oCtx, pieceW, 0, pieceW, pieceH, rightEdge);
+            drawJigsawEdge(oCtx, pieceW, pieceH, 0, pieceH, bottomEdge);
+            drawJigsawEdge(oCtx, 0, pieceH, 0, 0, leftEdge);
+            oCtx.closePath();
+
+            oCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            oCtx.lineWidth = 1.5;
+            oCtx.stroke();
+            oCtx.restore();
+
+            return { canvas: canvasOS, padding };
+        }
+
+        function changeGridSize(cols, rows) {
+            COLS = cols;
+            ROWS = rows;
+            TOTAL_PIECES = COLS * ROWS;
+            
+            document.getElementById('btn-5x7').className = cols === 5 
+                ? "bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-md" 
+                : "bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-md";
+            
+            document.getElementById('btn-7x10').className = cols === 7 
+                ? "bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-md" 
+                : "bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-md";
+
+            if (cols === 7 && rows === 10) {
+                pieceW = 102;
+                pieceH = 102;
+            } else {
+                pieceW = 145;
+                pieceH = 145;
+            }
+            
+            boardW = pieceW * COLS;
+            boardH = pieceH * ROWS;
+            boardX = (LOGICAL_WIDTH - boardW) / 2;
+            trayAreaY = boardY + boardH + 15;
+
+            initGame();
+        }
+
+        function initGame() {
+            initEdges();
+            pieces = [];
+            completedCount = 0;
+            moveCount = 0;
+            gameStarted = false;
+            isCompleted = false;
+            secondsElapsed = 0;
+            document.getElementById('moves').innerText = '0 moves';
+            document.getElementById('timer').innerText = '00:00';
+            if (timerInterval) clearInterval(timerInterval);
+
+            const trayCols = COLS === 7 ? 10 : 7;
+            const trayStartX = 35;
+            const trayStartY = trayAreaY + 22;
+            const spacingX = (LOGICAL_WIDTH - 70) / trayCols;
+            const spacingY = COLS === 7 ? 38 : 46;
+
+            let traySlots = [];
+            for (let i = 0; i < TOTAL_PIECES; i++) {
+                const tc = i % trayCols;
+                const tr = Math.floor(i / trayCols);
+                traySlots.push({
+                    x: trayStartX + tc * spacingX,
+                    y: trayStartY + tr * spacingY
+                });
+            }
+
+            shuffleArray(traySlots);
+
+            let idCounter = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const pieceData = createPieceOffscreenCanvas(r, c);
+                    const slot = traySlots[idCounter];
+
+                    const initialX = slot.x + (Math.random() * 14 - 7);
+                    const initialY = slot.y + (Math.random() * 8 - 4);
+
+                    const piece = {
+                        id: idCounter++,
+                        r: r,
+                        c: c,
+                        targetX: boardX + c * pieceW - pieceData.padding,
+                        targetY: boardY + r * pieceH - pieceData.padding,
+                        x: initialX,
+                        y: initialY,
+                        padding: pieceData.padding,
+                        canvas: pieceData.canvas,
+                        isLocked: false,
+                        inTray: true
+                    };
+                    pieces.push(piece);
+                }
+            }
+
+            shuffleArray(pieces);
+            redraw();
+        }
+
+        function startTimer() {
+            if (gameStarted || isCompleted) return;
+            gameStarted = true;
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                secondsElapsed = Math.floor((Date.now() - startTime) / 1000);
+                const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+                const secs = String(secondsElapsed % 60).padStart(2, '0');
+                const timeStr = `${mins}:${secs}`;
+                document.getElementById('timer').innerText = timeStr;
+                const mTimer = document.getElementById('timer-modal');
+                if (mTimer) mTimer.innerText = timeStr;
+            }, 1000);
+        }
+
+        function updateUIStats() {
+            const mMoves = document.getElementById('moves-modal');
+            if (mMoves) mMoves.innerText = `${moveCount} moves`;
+            document.getElementById('moves').innerText = `${moveCount} moves`;
+        }
+
+        function redraw() {
+            ctx.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+
+            // Board Area Frame
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.beginPath();
+            ctx.roundRect(boardX, boardY, boardW, boardH, 12);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            if (isCompleted) {
+                // Lines vanish: Draw clean image preview over the board
+                ctx.save();
+                ctx.beginPath();
+                ctx.roundRect(boardX, boardY, boardW, boardH, 12);
+                ctx.clip();
+                ctx.drawImage(img, boardX, boardY, boardW, boardH);
+                ctx.restore();
+
+                // Completion tray overlay with massively enlarged text filling the empty space
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+                ctx.fillRect(0, trayAreaY, LOGICAL_WIDTH, LOGICAL_HEIGHT - trayAreaY);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, trayAreaY);
+                ctx.lineTo(LOGICAL_WIDTH, trayAreaY);
+                ctx.stroke();
+
+                ctx.textAlign = 'center';
+                
+                // Completed Heading (Much Larger)
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 46px Outfit, sans-serif';
+                ctx.fillText('🎉 Puzzle Completed!', LOGICAL_WIDTH / 2, trayAreaY + 100);
+
+                // Massive Time & Moves Text
+                ctx.fillStyle = '#38bdf8'; // Bright cyan/sky color
+                ctx.font = 'bold 54px Outfit, sans-serif';
+                ctx.fillText(`Time: ${document.getElementById('timer').innerText}  •  Moves: ${moveCount}`, LOGICAL_WIDTH / 2, trayAreaY + 190);
+
+                // Large Tap Prompt
+                ctx.fillStyle = '#818cf8';
+                ctx.font = 'bold 26px Outfit, sans-serif';
+                ctx.fillText('Tap anywhere on screen to play next puzzle →', LOGICAL_WIDTH / 2, trayAreaY + 280);
+                
+                ctx.textAlign = 'left';
+                return;
+            }
+
+            // Normal Grid Guide Lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let r = 1; r < ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(boardX, boardY + r * pieceH);
+                ctx.lineTo(boardX + boardW, boardY + r * pieceH);
+                ctx.stroke();
+            }
+            for (let c = 1; c < COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(boardX + c * pieceW, boardY);
+                ctx.lineTo(boardX + c * pieceW, boardY + boardH);
+                ctx.stroke();
+            }
+
+            // Smaller Piece Tray Area Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, trayAreaY, LOGICAL_WIDTH, LOGICAL_HEIGHT - trayAreaY);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, trayAreaY);
+            ctx.lineTo(LOGICAL_WIDTH, trayAreaY);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '13px Outfit, sans-serif';
+            ctx.fillText('Piece Holder', 35, trayAreaY + 16);
+
+            // Draw Locked Pieces
+            pieces.forEach(p => {
+                if (p.isLocked) {
+                    ctx.save();
+                    ctx.shadowColor = 'transparent';
+                    ctx.drawImage(p.canvas, p.x, p.y);
+                    ctx.restore();
+                }
+            });
+
+            // Draw Unlocked Pieces
+            pieces.forEach(p => {
+                if (!p.isLocked && p !== activePiece) {
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+                    ctx.shadowBlur = 8;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 4;
+                    ctx.drawImage(p.canvas, p.x, p.y);
+                    ctx.restore();
+                }
+            });
+
+            // Draw Active Dragged Piece
+            if (activePiece) {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                ctx.shadowBlur = 18;
+                ctx.shadowOffsetX = 4;
+                ctx.shadowOffsetY = 8;
+                ctx.drawImage(activePiece.canvas, activePiece.x, activePiece.y);
+                ctx.restore();
+            }
+        }
+
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (isCompleted) {
+                currentImageIndex = (currentImageIndex + 1) % defaultImages.length;
+                currentImageSrc = defaultImages[currentImageIndex];
+                isCompleted = false;
+                img.src = currentImageSrc;
+                return;
+            }
+
+            const coords = getCanvasCoordinates(e);
+            
+            for (let i = pieces.length - 1; i >= 0; i--) {
+                const p = pieces[i];
+                if (p.isLocked) continue;
+
+                if (
+                    coords.x >= p.x && coords.x <= p.x + p.canvas.width &&
+                    coords.y >= p.y && coords.y <= p.y + p.canvas.height
+                ) {
+                    startTimer();
+                    activePiece = p;
+                    grabOffsetX = coords.x - p.x;
+                    grabOffsetY = coords.y - p.y;
+
+                    pieces.splice(i, 1);
+                    pieces.push(activePiece);
+
+                    canvas.setPointerCapture(e.pointerId);
+                    redraw();
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (!activePiece || isCompleted) return;
+            e.preventDefault();
+            const coords = getCanvasCoordinates(e);
+            activePiece.x = coords.x - grabOffsetX;
+            activePiece.y = coords.y - grabOffsetY;
+            redraw();
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            if (!activePiece || isCompleted) return;
+            canvas.releasePointerCapture(e.pointerId);
+
+            moveCount++;
+            updateUIStats();
+
+            const dist = Math.hypot(activePiece.x - activePiece.targetX, activePiece.y - activePiece.targetY);
+            const snapThreshold = COLS === 7 ? 30 : 40; 
+
+            if (dist < snapThreshold) {
+                activePiece.x = activePiece.targetX;
+                activePiece.y = activePiece.targetY;
+                activePiece.isLocked = true;
+                activePiece.inTray = false;
+                playSnapSound();
+
+                completedCount++;
+                if (completedCount === TOTAL_PIECES) {
+                    triggerVictory();
+                }
+            } else {
+                activePiece.inTray = false;
+            }
+
+            activePiece = null;
+            redraw();
+        });
+
+        canvas.addEventListener('pointercancel', (e) => {
+            if (!activePiece) return;
+            canvas.releasePointerCapture(e.pointerId);
+            activePiece.inTray = false;
+            activePiece = null;
+            redraw();
+        });
+
+        function triggerVictory() {
+            clearInterval(timerInterval);
+            isCompleted = true;
+            redraw();
+        }
+
+        function switchDefaultImage(index) {
+            currentImageIndex = index;
+            currentImageSrc = defaultImages[currentImageIndex];
+            img.src = currentImageSrc;
+            document.getElementById('options-modal').classList.add('hidden');
+        }
+
+        document.getElementById('start-game-btn').addEventListener('click', () => {
+            document.getElementById('splash-screen').classList.add('hidden');
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        });
+
+        document.getElementById('options-btn').addEventListener('click', () => {
+            document.getElementById('options-modal').classList.remove('hidden');
+        });
+        
+        document.getElementById('close-options-btn').addEventListener('click', () => {
+            document.getElementById('options-modal').classList.add('hidden');
+        });
+
+        document.getElementById('image-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentImageSrc = event.target.result;
+                    img.src = currentImageSrc;
+                    document.getElementById('options-modal').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            initGame();
+            document.getElementById('options-modal').classList.add('hidden');
+        });
+
+        // Hold-to-Preview Logic
+        const previewBtn = document.getElementById('preview-btn');
+        const previewModal = document.getElementById('preview-modal');
+        const previewImg = document.getElementById('preview-img');
+
+        const showPreview = (e) => {
+            e.preventDefault();
+            previewImg.src = currentImageSrc;
+            previewModal.classList.remove('hidden');
+        };
+
+        const hidePreview = () => {
+            previewModal.classList.add('hidden');
+        };
+
+        previewBtn.addEventListener('pointerdown', showPreview);
+        previewBtn.addEventListener('pointerup', hidePreview);
+        previewBtn.addEventListener('pointercancel', hidePreview);
+        previewBtn.addEventListener('pointerleave', hidePreview);
+
+        img.onload = () => {
+            initGame();
+        };
+        img.src = currentImageSrc;
+    </script>
+</body>
+</html>
